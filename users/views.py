@@ -96,18 +96,22 @@ class SignUpUserView(generics.GenericAPIView):
 # ---------- Login View
 class Login(ObtainAuthToken):
     def post(self, request):
-        serializer = self.serializer_class(
-            data=request.data, context={"request": request})
+        data = request.data
+        serializer = self.serializer_class(data=data)
+        email = User.objects.filter(email=data.get('username')).exists()
 
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        token, create = Token.objects.get_or_create(user=user)
-        response = {
-            "user": UserSerializer(user, context=self.get_serializer_context()).data,
-            'token': token.key,
-            "massage": "Login Success"
-        }
-        return Response(data=response, status=status.HTTP_200_OK)
+        if email:
+            serializer.is_valid(raise_exception=True)
+            user = serializer.validated_data['user']
+            token, create = Token.objects.get_or_create(user=user)
+            response = {
+                "user": UserSerializer(user, context=self.get_serializer_context()).data,
+                'token': token.key,
+                "massage": "Login Success"
+            }
+            return Response(data=response, status=status.HTTP_200_OK)
+        else:
+            return Response(data={"message": "Email or Password is invalid"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ----- Logout
