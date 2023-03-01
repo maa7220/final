@@ -85,12 +85,14 @@ class SignUpUserView(generics.GenericAPIView):
 
             response = {
                 "user": UserSerializer(user, context=self.get_serializer_context()).data,
-                "token": Token.objects.create(user=user).key,
                 "message": "User Created Successfully",
             }
             return Response(data=response, status=status.HTTP_201_CREATED)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            new_error = {}
+            for field_name, field_errors in serializer.errors.items():
+                new_error[field_name] = field_errors[0]
+            return Response(new_error, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ---------- Login View
