@@ -1,4 +1,5 @@
 from rest_framework import generics, status
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from .email_Send import send_via_email, send_otp_via_email
@@ -27,7 +28,8 @@ class SignUpAdminView(generics.GenericAPIView):
         data = request.data
         serializer = self.serializer_class(data=data)
         if serializer.is_valid():
-            serializer.save()
+            user = serializer.save()
+            Token.objects.create(user=user).key
             response = {
                 "message": "User Created Successfully , wait for accept",
             }
@@ -82,10 +84,10 @@ class SignUpUserView(generics.GenericAPIView):
         serializer = self.serializer_class(data=data)
         if serializer.is_valid():
             user = serializer.save(added_by=user_added)
-
             response = {
                 "user": UserSerializer(user, context=self.get_serializer_context()).data,
                 "message": "User Created Successfully",
+                "status": 201
             }
             return Response(data=response, status=status.HTTP_201_CREATED)
         else:
@@ -97,7 +99,9 @@ class SignUpUserView(generics.GenericAPIView):
 
 # ---------- Login View
 class Login(ObtainAuthToken):
+
     def post(self, request):
+
         data = request.data
         serializer = self.serializer_class(data=data)
         email = User.objects.filter(email=data.get('username')).exists()
@@ -109,7 +113,7 @@ class Login(ObtainAuthToken):
             response = {
                 "user": UserSerializer(user, context=self.get_serializer_context()).data,
                 'token': token.key,
-                "massage": "Login Success"
+                "massage": "Login Success",
             }
             return Response(data=response, status=status.HTTP_200_OK)
         else:
@@ -171,20 +175,23 @@ class NurseDoctor(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, IsDoctor]
 
     def get(self, request, pk=None):
-        user = request.user
+        try:
+            user = request.user
+            if pk:
+                queryset = Nurse.objects.prefetch_related(
+                    'doctor_nurse').get(user_id=pk)
+                serializer = NurseSerializer(queryset)
 
-        if pk:
-            queryset = Nurse.objects.prefetch_related(
-                'doctor_nurse').get(user_id=pk)
-            serializer = NurseSerializer(queryset)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                doctor = Doctor.objects.get(user_id=user.id)
+                queryset = doctor.nurse.prefetch_related('doctor_nurse')
+                nurses = self.filter_queryset(queryset)
+                serializer = NurseSerializer(nurses, many=True)
+                return Response({"result": nurses.count(), "nurses": serializer.data}, status=status.HTTP_200_OK)
 
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            doctor = Doctor.objects.get(user_id=user.id)
-            queryset = doctor.nurse.prefetch_related('doctor_nurse')
-            nurses = self.filter_queryset(queryset)
-            serializer = NurseSerializer(nurses, many=True)
-            return Response({"result": nurses.count(), "nurses": serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "User Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ----- Return Doctors for Nurse
@@ -192,24 +199,27 @@ class DoctorNurse(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, IsNurse]
 
     def get(self, request, pk=None):
-        user = request.user
-        list_doctors = []
+        try:
+            user = request.user
+            list_doctors = []
 
-        if pk:
-            queryset = Doctor.objects.get(user_id=pk)
-            serializer = DoctorSerializer(queryset)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            if pk:
+                queryset = Doctor.objects.get(user_id=pk)
+                serializer = DoctorSerializer(queryset)
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
-        else:
-            nurse = Nurse.objects.get(user_id=user.id)
-            doctors = Doctor.objects.filter(nurse=nurse)
+            else:
+                nurse = Nurse.objects.get(user_id=user.id)
+                doctors = Doctor.objects.filter(nurse=nurse)
 
-            for doctor in doctors:
-                list_doctors.append(doctor)
+                for doctor in doctors:
+                    list_doctors.append(doctor)
 
-            serializer = DoctorSerializer(list_doctors, many=True)
+                serializer = DoctorSerializer(list_doctors, many=True)
 
-            return Response({"result": len(list_doctors), "doctors": serializer.data}, status=status.HTTP_200_OK)
+                return Response({"result": len(list_doctors), "doctors": serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "User Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # -------- Get Doctors (Admin)
@@ -248,29 +258,36 @@ class UserDetails(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = UpdateUserSerializer
 
     def get(self, request, pk=None):
-        user = User.objects.get(id=pk)
-        serializer = UserSerializer(user)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            user = User.objects.get(id=pk)
+            serializer = UserSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "User Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request,  pk=None):
-        user = User.objects.get(id=pk)
-        data = request.data
-        serializer = self.serializer_class(instance=user, data=data)
+        try:
+            user = User.objects.get(id=pk)
+            data = request.data
+            serializer = self.serializer_class(instance=user, data=data)
 
-        if serializer.is_valid(raise_exception=True):
+            serializer.is_valid(raise_exception=True)
             result = serializer.save()
             response = {
                 "message": "User Updated successfully",
                 "data": UserSerializer(result).data,
             }
             return Response(data=response, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors)
+        except ObjectDoesNotExist:
+            return Response({"message": "User Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk=None):
-        user = User.objects.get(id=pk)
-        user.delete()
-        return Response({"message": "User Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        try:
+            user = User.objects.get(id=pk)
+            user.delete()
+            return Response({"message": "User Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except ObjectDoesNotExist:
+            return Response({"message": "User Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ----- Add Patients -----------
@@ -313,29 +330,36 @@ class PatientDetailsAPI(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAdminRole, IsAuthenticated]
 
     def get(self, request, pk=None):
-        queryset = Patient.objects.get(id=pk)
-        data = PatientSerializer(queryset).data
-        return Response(data=data, status=status.HTTP_200_OK)
+        try:
+            queryset = Patient.objects.get(id=pk)
+            data = PatientSerializer(queryset).data
+            return Response(data=data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "Patient Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, pk=None):
-        patient = Patient.objects.get(id=pk)
-        data = request.data
-        serializer = self.serializer_class(instance=patient, data=data)
+        try:
+            patient = Patient.objects.get(id=pk)
+            data = request.data
+            serializer = self.serializer_class(instance=patient, data=data)
 
-        if serializer.is_valid(raise_exception=True):
+            serializer.is_valid(raise_exception=True)
             result = serializer.save()
             response = {
                 "message": "Patient Updated successfully",
                 "patient": PatientSerializer(result).data,
             }
             return Response(data=response, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors)
+        except ObjectDoesNotExist:
+            return Response({"message": "Patient Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk=None):
-        queryset = Patient.objects.get(id=pk)
-        queryset.delete()
-        return Response(data={"message": 'Patient Deleted'}, status=status.HTTP_200_OK)
+        try:
+            queryset = Patient.objects.get(id=pk)
+            queryset.delete()
+            return Response(data={"message": 'Patient Deleted'}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "Patient Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ----- Delete Doctor or Nurse from Patient
@@ -390,54 +414,60 @@ class PatientUser(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk=None):
-        user = request.user
-        if pk:
-            queryset = Patient.objects.prefetch_related(
-                'doctor').prefetch_related('nurse').get(id=pk)
+        try:
+            user = request.user
+            if pk:
+                queryset = Patient.objects.prefetch_related(
+                    'doctor').prefetch_related('nurse').get(id=pk)
 
-            if user.role == 'doctor':
-                serializer = PatientDoctorsSerializer(queryset)
+                if user.role == 'doctor':
+                    serializer = PatientDoctorsSerializer(queryset)
 
-            elif user.role == 'nurse':
-                serializer = PatientNurseSerializer(queryset)
+                elif user.role == 'nurse':
+                    serializer = PatientNurseSerializer(queryset)
 
-            return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response(serializer.data, status=status.HTTP_200_OK)
 
-        else:
-            # --------------------------------
-            if user.role == 'doctor':
-                doctor = Doctor.objects.get(user_id=user.id)
-                patients = doctor.doctor.all()
-                serializer = PatientDoctorsSerializer(patients, many=True,)
+            else:
+                # --------------------------------
+                if user.role == 'doctor':
+                    doctor = Doctor.objects.get(user_id=user.id)
+                    patients = doctor.doctor.all()
+                    serializer = PatientDoctorsSerializer(patients, many=True,)
 
-            # --------------------------------
-            elif user.role == 'nurse':
-                nurse = Nurse.objects.get(user_id=user.id)
-                patients = nurse.nurse.all()
-                serializer = PatientNurseSerializer(patients, many=True)
+                # --------------------------------
+                elif user.role == 'nurse':
+                    nurse = Nurse.objects.get(user_id=user.id)
+                    patients = nurse.nurse.all()
+                    serializer = PatientNurseSerializer(patients, many=True)
 
-            return Response({"result": patients.count(), "patients_data": serializer.data}, status=status.HTTP_200_OK)
+                return Response({"result": patients.count(), "patients_data": serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "Patient Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class GetRelatedUser(generics.ListCreateAPIView):
     permission_classes = [IsAdminRole, IsAuthenticated]
 
     def get(self, request, pk=None):
-        user = User.objects.get(id=pk)
-        list_doctors = []
-        if user.role == 'doctor':
-            doctor = Doctor.objects.get(user=user)
-            nurses = doctor.nurse.all()
-            serializer = NurseSerializer(nurses, many=True)
-            return Response({"result": nurses.count(), "nurses": serializer.data}, status=status.HTTP_200_OK)
+        try:
+            user = User.objects.get(id=pk)
+            list_doctors = []
+            if user.role == 'doctor':
+                doctor = Doctor.objects.get(user=user)
+                nurses = doctor.nurse.all()
+                serializer = NurseSerializer(nurses, many=True)
+                return Response({"result": nurses.count(), "nurses": serializer.data}, status=status.HTTP_200_OK)
 
-        elif user.role == 'nurse':
-            nurse = Nurse.objects.get(user=user)
-            doctors = nurse.doctor_nurse.all()
-            for doctor in doctors:
-                list_doctors.append(doctor)
-            serializer = DoctorSerializer(list_doctors, many=True)
-            return Response({"result": len(list_doctors), "doctors": serializer.data}, status=status.HTTP_200_OK)
+            elif user.role == 'nurse':
+                nurse = Nurse.objects.get(user=user)
+                doctors = nurse.doctor_nurse.all()
+                for doctor in doctors:
+                    list_doctors.append(doctor)
+                serializer = DoctorSerializer(list_doctors, many=True)
+                return Response({"result": len(list_doctors), "doctors": serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": 'User Not Found'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class DoctorsName(generics.ListCreateAPIView):
