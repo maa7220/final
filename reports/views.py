@@ -1,4 +1,5 @@
 from rest_framework import generics, views
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.response import Response
 from rest_framework import status
 from .models import DoctorReport, NurseReport
@@ -47,30 +48,38 @@ class DoctorDetailsReport(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DoctorReportSerializer
 
     def get(self, request, id=None):
-        report = DoctorReport.objects.get(id=id)
-        serializer = ResultDoctorReportSerializer(report)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            report = DoctorReport.objects.get(id=id)
+            serializer = ResultDoctorReportSerializer(report)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, id=None):
-        report = DoctorReport.objects.get(id=id)
-        doctor = Doctor.objects.get(user=self.request.user)
-        data = request.data
-        serializer = self.serializer_class(instance=report, data=data)
+        try:
+            report = DoctorReport.objects.get(id=id)
+            doctor = Doctor.objects.get(user=self.request.user)
+            data = request.data
+            serializer = self.serializer_class(instance=report, data=data)
 
-        if serializer.is_valid(raise_exception=True):
+            serializer.is_valid(raise_exception=True)
             result = serializer.save(added_by=doctor)
             response = {
                 "message": "Report Updated successfully",
                 "data": ResultDoctorReportSerializer(result).data,
             }
             return Response(data=response, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors)
+
+        except ObjectDoesNotExist:
+            return Response({"message": "Report Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, id=None):
-        report = DoctorReport.objects.get(id=id)
-        report.delete()
-        return Response({"message": "Report Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        try:
+            report = DoctorReport.objects.get(id=id)
+            report.delete()
+            return Response({"message": "Report Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Return Report For Doctor (That Nurse added for him)
@@ -78,22 +87,26 @@ class GetDoctorReport(views.APIView):
     permission_classes = [IsAuthenticated, IsDoctor]
 
     def get(self, request, id=None):
-        user = request.user
-        if id:
-            report = NurseReport.objects.get(id=id)
-            serializer = ResultDoctorReportAddedNurseSerializer(report)
-            return Response({"report": serializer.data}, status=status.HTTP_200_OK)
+        try:
+            user = request.user
+            if id:
+                report = NurseReport.objects.get(id=id)
+                serializer = ResultDoctorReportAddedNurseSerializer(report)
+                return Response({"report": serializer.data}, status=status.HTTP_200_OK)
 
-        else:
-            current_doctor = Doctor.objects.get(user_id=user)
-            report = current_doctor.doctors_reports.all()
+            else:
+                current_doctor = Doctor.objects.get(user_id=user)
+                report = current_doctor.doctors_reports.all()
 
-            serializer = ResultDoctorReportAddedNurseSerializer(
-                report, many=True)
-            return Response({'result': len(serializer.data), "reports": serializer.data}, status=status.HTTP_200_OK)
-
+                serializer = ResultDoctorReportAddedNurseSerializer(
+                    report, many=True)
+                return Response({'result': len(serializer.data), "reports": serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
 # ======================= Nurse =======================================
+
+
 class AddNurseReport(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated, IsNurse]
     serializer_class = NurseReportSerializer
@@ -128,30 +141,37 @@ class NurseDetailsReport(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = NurseReportSerializer
 
     def get(self, request, id=None):
-        report = NurseReport.objects.get(id=id)
-        serializer = ResultNurseReportSerializer(report)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        try:
+            report = NurseReport.objects.get(id=id)
+            serializer = ResultNurseReportSerializer(report)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request, id=None):
-        report = NurseReport.objects.get(id=id)
-        nurse = Nurse.objects.get(user=self.request.user)
-        data = request.data
-        serializer = self.serializer_class(instance=report, data=data)
+        try:
+            report = NurseReport.objects.get(id=id)
+            nurse = Nurse.objects.get(user=self.request.user)
+            data = request.data
+            serializer = self.serializer_class(instance=report, data=data)
 
-        if serializer.is_valid(raise_exception=True):
+            serializer.is_valid(raise_exception=True)
             result = serializer.save(added_by=nurse)
             response = {
                 "message": "Report Updated successfully",
                 "data": ResultNurseReportSerializer(result).data,
             }
             return Response(data=response, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, id=None):
-        report = NurseReport.objects.get(id=id)
-        report.delete()
-        return Response({"message": "Report Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        try:
+            report = NurseReport.objects.get(id=id)
+            report.delete()
+            return Response({"message": "Report Deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Return Report For Nurse (That Doctor added for her)
@@ -159,19 +179,22 @@ class GetNurseReport(views.APIView):
     permission_classes = [IsAuthenticated, IsNurse]
 
     def get(self, request, id=None):
-        user = request.user
-        if id:
-            report = DoctorReport.objects.get(id=id)
-            serializer = ResultNurseReportAddedDoctorSerializer(report)
-            return Response({"report": serializer.data}, status=status.HTTP_200_OK)
+        try:
+            user = request.user
+            if id:
+                report = DoctorReport.objects.get(id=id)
+                serializer = ResultNurseReportAddedDoctorSerializer(report)
+                return Response({"report": serializer.data}, status=status.HTTP_200_OK)
 
-        else:
-            current_nurse = Nurse.objects.get(user_id=user)
-            report = current_nurse.nurse_reports.all()
+            else:
+                current_nurse = Nurse.objects.get(user_id=user)
+                report = current_nurse.nurse_reports.all()
 
-            serializer = ResultNurseReportAddedDoctorSerializer(
-                report, many=True)
-            return Response({'result': len(serializer.data), "reports": serializer.data}, status=status.HTTP_200_OK)
+                serializer = ResultNurseReportAddedDoctorSerializer(
+                    report, many=True)
+                return Response({'result': len(serializer.data), "reports": serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ======================= Return & Add Report For patient =======================================
@@ -278,30 +301,33 @@ class NursePatientReportDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ReportNursePatientSerializer
 
     def get(self, request, pk=None, id=None):
-        report = NurseReport.objects.get(id=id)
-        serializer = ResultNurseReportSerializer(report)
-        return Response({"report": serializer.data}, status=status.HTTP_200_OK)
+        try:
+            report = NurseReport.objects.get(id=id)
+            serializer = ResultNurseReportSerializer(report)
+            return Response({"report": serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request,  pk=None, id=None):
-        report = NurseReport.objects.get(id=id)
-        patient = Patient.objects.get(id=pk)
-        print(patient)
+        try:
+            report = NurseReport.objects.get(id=id)
+            patient = Patient.objects.get(id=pk)
 
-        data = request.data
-        data['patient'] = patient.id
+            data = request.data
+            data['patient'] = patient.id
 
-        serializer = self.serializer_class(
-            instance=report, data=data,)
+            serializer = self.serializer_class(
+                instance=report, data=data,)
 
-        if serializer.is_valid(raise_exception=True):
+            serializer.is_valid(raise_exception=True)
             result = serializer.save()
             response = {
                 "message": "Report Updated successfully",
                 "data": ResultNurseReportSerializer(result).data,
             }
             return Response(data=response, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors)
+        except ObjectDoesNotExist:
+            return Response({"message": "Report does not exist"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, id=None, pk=None):
         report = DoctorReport.objects.get(id=id)
