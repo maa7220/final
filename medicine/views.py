@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework.response import Response
 from rest_framework import generics, status
 from .models import Medicines, Medicine
@@ -6,9 +6,11 @@ from rest_framework.permissions import IsAuthenticated
 from .serializer import (MedicinesSerializer, AddMedicineSerializer, NurseResultMedicineSerializer,
                          AddAllNursesMedicineSerializer, ResultMedicineSerializer, SimpleResultMedicineSerializer)
 from users.models import Nurse, Patient
-from users.permissions import IsDoctor,IsNurse
+from users.permissions import IsDoctor, IsNurse
 
 # ------- Name of Medicines
+
+
 class MedicinesView(generics.ListCreateAPIView):
     serializer_class = MedicinesSerializer
     queryset = Medicines.objects.all()
@@ -22,7 +24,7 @@ class MedicineDetails(generics.RetrieveUpdateDestroyAPIView):
 
 # -------  Add Medicine for(patient)
 class AddMedicineNurse(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated ,IsDoctor]
+    permission_classes = [IsAuthenticated, IsDoctor]
     serializer_class = AddMedicineSerializer
 
     def post(self, request):
@@ -46,22 +48,29 @@ class GetMedicineUser(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk=None):
+        try:
+            doctor = request.user
 
-        doctor = request.user
-
-        if pk:
-            medicine = Medicine.objects.prefetch_related('doctor').get(id=pk)
-            serializer = SimpleResultMedicineSerializer(medicine)
-            return Response({"medicine": serializer.data}, status=status.HTTP_200_OK)
-        else:
-            medicine = Medicine.objects.filter(doctor=doctor)
-            serializer = ResultMedicineSerializer(medicine, many=True)
-            return Response({"results": medicine.count(), "medicines": serializer.data}, status=status.HTTP_200_OK)
+            if pk:
+                medicine = Medicine.objects.prefetch_related(
+                    'doctor').get(id=pk)
+                serializer = SimpleResultMedicineSerializer(medicine)
+                return Response({"medicine": serializer.data}, status=status.HTTP_200_OK)
+            else:
+                medicine = Medicine.objects.filter(doctor=doctor)
+                serializer = ResultMedicineSerializer(medicine, many=True)
+                return Response({"results": medicine.count(), "medicines": serializer.data}, status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response({"message": "medicine not found"}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk=None):
-        medicine = Medicine.objects.prefetch_related('doctor').get(id=pk)
-        medicine.delete()
-        return Response({"message": 'Medicine Delete Successfully'}, status=status.HTTP_200_OK)
+        try:
+            medicine = Medicine.objects.prefetch_related('doctor').get(id=pk)
+            medicine.delete()
+            return Response({"message": 'Medicine Delete Successfully'}, status=status.HTTP_200_OK)
+
+        except ObjectDoesNotExist:
+            return Response({"message": "medicine not found"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # -------  Get Medicines for (Nurse)
