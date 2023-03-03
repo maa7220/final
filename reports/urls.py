@@ -20,9 +20,12 @@ urlpatterns = [
 
     # Get report that nurses added for doctor
     path("doctor_reports/", GetDoctorReport.as_view(), name="doctor_reports"),
+    path("doctor_reports/<int:id>",
+         GetDoctorReport.as_view(), name="doctor_reports"),
 
     # Get report that doctors added for nurse
     path("nurse_reports/", GetNurseReport.as_view(), name="nurse_reports"),
+    path("nurse_reports/<int:id>", GetNurseReport.as_view(), name="nurse_reports"),
 
 
     # Will Be Removed
