@@ -113,7 +113,7 @@ class Login(ObtainAuthToken):
             response = {
                 "user": UserSerializer(user, context=self.get_serializer_context()).data,
                 'token': token.key,
-                "massage": "Login Success",
+                "message": "Login Success",
             }
             return Response(data=response, status=status.HTTP_200_OK)
         else:
