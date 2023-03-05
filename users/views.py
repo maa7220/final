@@ -41,7 +41,7 @@ class SignUpAdminView(generics.GenericAPIView):
             return Response(new_error, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ---- GetPendingAdminUser-------
+# ---- GetPendingAdminUser -------
 class GetPendingAdminUser(generics.ListCreateAPIView):
     permission_classes = [IsSuperUser]
     serializer_class = SimpleUserSerializer
