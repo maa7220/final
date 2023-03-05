@@ -62,7 +62,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     gender = models.CharField(max_length=100)
     age = models.CharField(max_length=3, blank=True, null=True)
-    nat_id = models.IntegerField(default=1)
+    nat_id = models.CharField(blank=True, null=True, max_length=14)
     date_joined = models.DateTimeField(default=timezone.now)
 
     otp = models.CharField(max_length=4, null=True, blank=True)
