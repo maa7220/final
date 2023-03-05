@@ -184,8 +184,8 @@ class AddPatient(serializers.ModelSerializer):
                   'disease_type', 'room_number', 'nat_id', 'phone', 'gender', 'age', 'status']
 
     def validate(self, attrs):
-        phone_exists = User.objects.filter(phone=attrs["phone"]).exists()
-        nat_exists = User.objects.filter(nat_id=attrs["nat_id"]).exists()
+        phone_exists = Patient.objects.filter(phone=attrs["phone"]).exists()
+        nat_exists = Patient.objects.filter(nat_id=attrs["nat_id"]).exists()
 
         if phone_exists:
             raise ValidationError({"message": "Phone has already been used"})
