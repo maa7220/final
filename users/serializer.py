@@ -38,17 +38,9 @@ class SignUpAdminSerializer(serializers.ModelSerializer):
     }
 
     def validate(self, attrs):
-        email_exists = User.objects.filter(email=attrs["email"]).exists()
-        username_exists = User.objects.filter(
-            username=attrs["username"]).exists()
         phone_exists = User.objects.filter(phone=attrs["phone"]).exists()
-
-        if email_exists:
-            raise ValidationError("Email has already been used")
-        if username_exists:
-            raise ValidationError("Username has already been used")
         if phone_exists:
-            raise ValidationError("Phone has already been used")
+            raise ValidationError({"message": "Phone has already been used"})
 
         return super().validate(attrs)
 
