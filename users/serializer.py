@@ -184,12 +184,13 @@ class AddPatient(serializers.ModelSerializer):
                   'disease_type', 'room_number', 'nat_id', 'phone', 'gender', 'age', 'status']
 
     def validate(self, attrs):
-        nat_id_exists = Patient.objects.filter(nat_id=attrs["nat_id"]).exists()
-        phone_exists = Patient.objects.filter(phone=attrs["phone"]).exists()
+        phone_exists = User.objects.filter(phone=attrs["phone"]).exists()
+        nat_exists = User.objects.filter(nat_id=attrs["nat_id"]).exists()
+
         if phone_exists:
-            raise ValidationError("Phone has already been used")
-        if nat_id_exists:
-            raise ValidationError("ID has already been used")
+            raise ValidationError({"message": "Phone has already been used"})
+        if nat_exists:
+            raise ValidationError({"message": "ID must be unique"})
         return super().validate(attrs)
 
     def create(self, validated_data):
