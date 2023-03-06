@@ -41,11 +41,15 @@ class SignUpAdminView(generics.GenericAPIView):
             return Response(new_error, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ---- GetPendingAdminUser -------
+# ---- GetPendingAdminUser-------
 class GetPendingAdminUser(generics.ListCreateAPIView):
     permission_classes = [IsSuperUser]
     serializer_class = SimpleUserSerializer
-    queryset = User.objects.filter(is_active=False)
+
+    def get(self, request):
+        queryset = User.objects.filter(is_active=False)
+        serializer = SimpleUserSerializer(queryset, many=True).data
+        return Response(data={"result": len(serializer), "data": serializer}, status=status.HTTP_200_OK)
 
 
 # ---- Get Pending Details AdminUser -------
@@ -60,19 +64,22 @@ class AccepterAdminUser(APIView):
         data = request.data
         email = data.get('email')
         if not email:
-            return Response('Email is required', status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
         send_via_email(email)
         user = User.objects.get(email=email)
         user.is_active = True
         user.save()
-        return Response({'Accept'}, status=status.HTTP_200_OK)
+        return Response({"message": 'Accept User'}, status=status.HTTP_200_OK)
 
 
 # ---- GetActiveAdminUser -------
 class GetActiveAdminUser(generics.ListCreateAPIView):
     permission_classes = [IsSuperUser]
-    serializer_class = SimpleUserSerializer
-    queryset = User.objects.filter(is_active=True, role='admin')
+
+    def get(self, request):
+        queryset = User.objects.filter(is_active=True, role='admin')
+        serializer = SimpleUserSerializer(queryset, many=True).data
+        return Response(data={"result": len(serializer), "data": serializer}, status=status.HTTP_200_OK)
 
 
 # ---------- SignUp View
@@ -154,14 +161,20 @@ class AddDeleteNurseUser(generics.RetrieveUpdateDestroyAPIView):
         data = request.data
         doctor = data.get('doctor')
         nurses_ids = data.get('nurse')
+        serializer = self.serializer_class(data=data)
 
         doctor_instance = Doctor.objects.get(user=doctor)
-        for nurse_id in nurses_ids:
-            nurse_instance = Nurse.objects.get(user_id=nurse_id)
-            doctor_instance.nurse.add(nurse_instance)
-            self.serializer_class(data=data)
-            doctor_instance.save()
-        return Response({"message": "Nurse Added successfully"}, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            for nurse_id in nurses_ids:
+                nurse_instance = Nurse.objects.get(user_id=nurse_id)
+                doctor_instance.nurse.add(nurse_instance)
+                doctor_instance.save()
+            return Response({"message": "Nurse Added successfully"}, status=status.HTTP_201_CREATED)
+        else:
+            new_error = {}
+            for field_name, field_errors in serializer.errors.items():
+                new_error[field_name] = field_errors[0]
+            return Response(new_error, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk=None):
         data = request.data
