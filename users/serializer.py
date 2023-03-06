@@ -1,5 +1,6 @@
+
 from rest_framework import serializers
-from rest_framework.validators import ValidationError
+from rest_framework.validators import ValidationError, UniqueValidator
 from .models import (Admin, User, Doctor, Nurse, Patient)
 
 
@@ -73,9 +74,9 @@ class SignUpUserSerializer(serializers.ModelSerializer):
         fields = ["email", "username", "name", "phone", 'image', 'nat_id',
                   "password", "role", "gender", "age", "specialization"]
 
-    extra_kwargs = {
-        'role': {'required': True},
-    }
+        extra_kwargs = {
+            'role': {'required': True},
+        }
 
     def validate(self, attrs):
         phone_exists = User.objects.filter(phone=attrs["phone"]).exists()
@@ -114,6 +115,8 @@ class SignUpUserSerializer(serializers.ModelSerializer):
 class AddNurseSerializer(serializers.ModelSerializer):
     nurse = serializers.SlugRelatedField(
         queryset=Nurse.objects.all(), many=True, slug_field='user_id')
+    doctor = serializers.SlugRelatedField(
+        queryset=User.objects.all(), slug_field='id')
 
     class Meta:
         model = Doctor
@@ -184,8 +187,8 @@ class AddPatient(serializers.ModelSerializer):
                   'disease_type', 'room_number', 'nat_id', 'phone', 'gender', 'age', 'status']
 
     def validate(self, attrs):
-        phone_exists = Patient.objects.filter(phone=attrs["phone"]).exists()
-        nat_exists = Patient.objects.filter(nat_id=attrs["nat_id"]).exists()
+        phone_exists = User.objects.filter(phone=attrs["phone"]).exists()
+        nat_exists = User.objects.filter(nat_id=attrs["nat_id"]).exists()
 
         if phone_exists:
             raise ValidationError({"message": "Phone has already been used"})
