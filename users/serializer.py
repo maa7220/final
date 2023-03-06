@@ -1,4 +1,3 @@
-
 from rest_framework import serializers
 from rest_framework.validators import ValidationError, UniqueValidator
 from .models import (Admin, User, Doctor, Nurse, Patient)
@@ -302,3 +301,9 @@ class VerifyOtpSerializer(serializers.Serializer):
 class PasswordSerializer(serializers.Serializer):
     password = serializers.CharField(min_length=8)
     email = serializers.EmailField()
+
+    def validate(self, attrs):
+        email_exists = User.objects.filter(email=attrs["email"]).exists()
+        if email_exists == False:
+            raise ValidationError({"message": "Email does not exist"})
+        return super().validate(attrs)
