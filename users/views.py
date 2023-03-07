@@ -114,9 +114,9 @@ class Login(ObtainAuthToken):
 
         data = request.data
         serializer = self.serializer_class(data=data)
-        email = User.objects.filter(email=data.get('username')).exists()
+        email = User.objects.filter(email=data.get('username'))
 
-        if email:
+        if email.exists() and email.get().is_active == True:
             serializer.is_valid(raise_exception=True)
             user = serializer.validated_data['user']
             token, create = Token.objects.get_or_create(user=user)
