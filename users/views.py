@@ -147,7 +147,7 @@ class LoginUser(generics.RetrieveUpdateAPIView):
         queryset = User.objects.get(id=user_id)
         user_serializer = UserSerializer(queryset)
         if user_serializer:
-            return Response(user_serializer.data, status=status.HTTP_200_OK)
+            return Response({"data": user_serializer.data}, status=status.HTTP_200_OK)
         else:
             return Response({"error": user_serializer.errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -204,7 +204,7 @@ class NurseDoctor(generics.ListCreateAPIView):
                 queryset = doctor.nurse.prefetch_related('doctor_nurse')
                 nurses = self.filter_queryset(queryset)
                 serializer = NurseSerializer(nurses, many=True)
-                return Response({"result": nurses.count(), "nurses": serializer.data}, status=status.HTTP_200_OK)
+                return Response({"result": nurses.count(), "data": serializer.data}, status=status.HTTP_200_OK)
 
         except ObjectDoesNotExist:
             return Response({"message": "User Not Found"}, status=status.HTTP_400_BAD_REQUEST)
@@ -233,7 +233,7 @@ class DoctorNurse(generics.ListCreateAPIView):
 
                 serializer = DoctorSerializer(list_doctors, many=True)
 
-                return Response({"result": len(list_doctors), "doctors": serializer.data}, status=status.HTTP_200_OK)
+                return Response({"result": len(list_doctors), "data": serializer.data}, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
             return Response({"message": "User Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -250,7 +250,16 @@ class AllDoctors(generics.ListCreateAPIView):
         if user.role == 'admin':
             return User.objects.filter(added_by=user).filter(role='doctor')
         else:
-            return Response({'message': 'Not Have Access'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'message': 'Not Have Access'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    def get(self, request):
+        user = self.request.user
+        if user.role == 'admin':
+            query = User.objects.filter(added_by=user).filter(role='doctor')
+            serializer = UserSerializer(query, many=True).data
+            return Response({"result": len(serializer), 'data': serializer}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'Not Have Access'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 # -------- Get Nurses (Admin)
@@ -265,7 +274,16 @@ class AllNurses(generics.ListCreateAPIView):
         if user.role == 'admin':
             return User.objects.filter(added_by=user).filter(role='nurse')
         else:
-            return Response({'message': 'Not Have Access'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'message': 'Not Have Access'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    def get(self, request):
+        user = self.request.user
+        if user.role == 'admin':
+            query = User.objects.filter(added_by=user).filter(role='nurse')
+            serializer = UserSerializer(query, many=True).data
+            return Response({"result": len(serializer), 'data': serializer}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'Not Have Access'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 # -------- Get Only Users (Updated Delete)
@@ -341,6 +359,16 @@ class Patients(generics.ListCreateAPIView):
     def get_queryset(self):
         admin = Admin.objects.get(user_id=self.request.user)
         return admin.added_admin.all()
+
+    def get(self, request):
+        user = self.request.user
+        if user.role == 'admin':
+            admin = Admin.objects.get(user_id=self.request.user)
+            query = admin.added_admin.all()
+            serializer = PatientSerializer(query, many=True).data
+            return Response({"result": len(serializer), 'data': serializer}, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'Not Have Access'}, status=status.HTTP_401_UNAUTHORIZED)
 
 
 # ----- Patient Details ---------
@@ -418,14 +446,14 @@ class GetUsersPatient(generics.ListCreateAPIView):
             patients = Patient.objects.filter(doctor=doctor)
             serializer = PatientDoctorsSerializer(
                 patients, many=True, context=self.get_serializer_context())
-            return Response({"result": patients.count(), "patients_data": serializer.data}, status=status.HTTP_200_OK)
+            return Response({"result": patients.count(), "data": serializer.data}, status=status.HTTP_200_OK)
 
         else:
             nurse = Nurse.objects.get(user=user)
             patients = Patient.objects.filter(nurse=nurse)
             serializer = PatientNurseSerializer(
                 patients, many=True, context=self.get_serializer_context())
-            return Response({"result": patients.count(), "patients_data": serializer.data}, status=status.HTTP_200_OK)
+            return Response({"result": patients.count(), "data": serializer.data}, status=status.HTTP_200_OK)
 
 
 # ----- Return Patient for doctor and nurse
@@ -460,7 +488,7 @@ class PatientUser(APIView):
                     patients = nurse.nurse.all()
                     serializer = PatientNurseSerializer(patients, many=True)
 
-                return Response({"result": patients.count(), "patients_data": serializer.data}, status=status.HTTP_200_OK)
+                return Response({"result": patients.count(), "data": serializer.data}, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
             return Response({"message": "Patient Not Found"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -476,7 +504,7 @@ class GetRelatedUser(generics.ListCreateAPIView):
                 doctor = Doctor.objects.get(user=user)
                 nurses = doctor.nurse.all()
                 serializer = NurseSerializer(nurses, many=True)
-                return Response({"result": nurses.count(), "nurses": serializer.data}, status=status.HTTP_200_OK)
+                return Response({"result": nurses.count(), "data": serializer.data}, status=status.HTTP_200_OK)
 
             elif user.role == 'nurse':
                 nurse = Nurse.objects.get(user=user)
@@ -484,7 +512,7 @@ class GetRelatedUser(generics.ListCreateAPIView):
                 for doctor in doctors:
                     list_doctors.append(doctor)
                 serializer = DoctorSerializer(list_doctors, many=True)
-                return Response({"result": len(list_doctors), "doctors": serializer.data}, status=status.HTTP_200_OK)
+                return Response({"result": len(list_doctors), "data": serializer.data}, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
             return Response({"message": 'User Not Found'}, status=status.HTTP_400_BAD_REQUEST)
 
