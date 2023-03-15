@@ -240,7 +240,7 @@ class DoctorNurse(generics.ListCreateAPIView):
 
 # -------- Get Doctors (Admin)
 class AllDoctors(generics.ListCreateAPIView):
-    permission_classes = [IsAdminRole, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminRole]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['name', 'username', 'gender', 'specialization']
     serializer_class = UserSerializer
@@ -264,7 +264,7 @@ class AllDoctors(generics.ListCreateAPIView):
 
 # -------- Get Nurses (Admin)
 class AllNurses(generics.ListCreateAPIView):
-    permission_classes = [IsAdminRole, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminRole]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['name', 'username', 'gender', 'specialization']
     serializer_class = UserSerializer
@@ -326,7 +326,7 @@ class UserDetails(generics.RetrieveUpdateDestroyAPIView):
 
 # ----- Add Patients -----------
 class SignupPatients(generics.GenericAPIView):
-    permission_classes = [IsAdminRole, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminRole]
     serializer_class = AddPatient
 
     def post(self, request: Request):
@@ -351,7 +351,7 @@ class SignupPatients(generics.GenericAPIView):
 
 # ----- Patients for admin ---------
 class Patients(generics.ListCreateAPIView):
-    permission_classes = [IsAdminRole, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminRole]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['name', 'disease_type', 'room_number']
     serializer_class = PatientSerializer
@@ -374,7 +374,7 @@ class Patients(generics.ListCreateAPIView):
 # ----- Patient Details ---------
 class PatientDetailsAPI(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AddPatient
-    permission_classes = [IsAdminRole, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminRole]
 
     def get(self, request, pk=None):
         try:
@@ -411,7 +411,7 @@ class PatientDetailsAPI(generics.RetrieveUpdateDestroyAPIView):
 
 # ----- Delete Doctor or Nurse from Patient
 class PatientDeleteUser(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAdminRole, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminRole]
     serializer_class = AddPatient
 
     def delete(self, request, pk=None):
@@ -437,7 +437,7 @@ class PatientDeleteUser(generics.RetrieveUpdateDestroyAPIView):
 
 # (Admin) Return Patient For one (nurse , or doctor)
 class GetUsersPatient(generics.ListCreateAPIView):
-    permission_classes = [IsAdminRole, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminRole]
 
     def get(self, request, pk=None):
         user = User.objects.get(pk=pk)
@@ -494,7 +494,7 @@ class PatientUser(APIView):
 
 
 class GetRelatedUser(generics.ListCreateAPIView):
-    permission_classes = [IsAdminRole, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminRole]
 
     def get(self, request, pk=None):
         try:
