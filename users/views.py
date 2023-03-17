@@ -523,7 +523,7 @@ class DoctorsName(generics.ListCreateAPIView):
     def get(self, request):
         doctors = User.objects.filter(role='doctor')
         serializer = UsersName(doctors, many=True).data
-        return Response(serializer)
+        return Response(data={"data": serializer}, status=status.HTTP_200_OK)
 
 
 class NursesName(generics.ListCreateAPIView):
@@ -532,7 +532,7 @@ class NursesName(generics.ListCreateAPIView):
     def get(self, request):
         nurses = User.objects.filter(role='nurse')
         serializer = UsersName(nurses, many=True).data
-        return Response(serializer)
+        return Response(data={"data": serializer}, status=status.HTTP_200_OK)
 
 
 # ============================================================================
