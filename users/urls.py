@@ -3,7 +3,7 @@ from .views import (SignUpAdminView, GetActiveAdminUser, SignUpUserView, Login,
                     LogoutView, LoginUser, AddDeleteNurseUser, NurseDoctor, DoctorNurse, AllDoctors, AllNurses,
                     GetPendingAdminUser, DetailsAdminUser, AccepterAdminUser, UserDetails, SignupPatients,
                     Patients, PatientDetailsAPI, PatientDeleteUser, GetUsersPatient, GetRelatedUser,
-                    PasswordResetView, VerifyOTP, PasswordView, DoctorsName, NursesName, PatientUser
+                    PasswordResetView, VerifyOTP, PasswordView, DoctorsName, NursesName, PatientUser, UpdateProfileAdmin
                     )
 
 
@@ -12,7 +12,9 @@ urlpatterns = [
     path("signup_admin", SignUpAdminView.as_view(), name="signup_admin"),
     path("signup_user", SignUpUserView.as_view(), name="signup_user"),
     path("login", Login.as_view(), name="login"),
-    path("logout", LogoutView.as_view(), name="logout"),
+
+    path("update_profile",
+         UpdateProfileAdmin.as_view(), name="update_profile"),
 
     # ============================================================================
     # Reset Password
@@ -33,8 +35,7 @@ urlpatterns = [
     path("pending_admin", GetPendingAdminUser.as_view(), name="pending_admin"),
     path("pending_admin/<str:pk>", DetailsAdminUser.as_view(),
          name="pending_admin_details"),
-    path("pending_admin/<str:pk>", DetailsAdminUser.as_view(),
-         name="pending_admin_details"),
+
     path("accept_admin", AccepterAdminUser.as_view(),
          name="accept_admin"),
     # ---------- get users -------------
