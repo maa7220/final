@@ -596,3 +596,26 @@ class PasswordView(APIView):
             for field_name, field_errors in serializer.errors.items():
                 new_error[field_name] = field_errors[0]
             return Response(new_error, status=status.HTTP_400_BAD_REQUEST)
+          
+          
+class UpdateProfileAdmin(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def update(self, request):
+        user = request.user
+        data = request.data
+        phone_exists = User.objects.exclude(
+            pk=user.pk).filter(phone=data["phone"]).exists()
+        email_exists = User.objects.exclude(
+            pk=user.pk).filter(email=data["email"]).exists()
+
+        if phone_exists:
+            return Response({"message": "Phone has already been used"}, status=status.HTTP_400_BAD_REQUEST)
+        if email_exists:
+            return Response({"message": "Email has already been used"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.email = data.get('email')
+        user.name = data.get('name')
+        user.phone = data.get('phone')
+        user.save()
+        return Response({"message": "Update profile"}, status=status.HTTP_200_OK)          
