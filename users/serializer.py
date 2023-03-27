@@ -29,7 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "username", "name", "phone", "added_by", 'address', 'status',
+        fields = ["id", "email", "username", "name", "phone", "added_by",
                   'nat_id', 'image', 'specialization', "role",  "gender", "age"]
 
 
@@ -90,7 +90,7 @@ class SignUpUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["email", "username", "name", "phone", 'image', 'nat_id', 'address', 'status',
+        fields = ["email", "username", "name", "phone", 'image', 'nat_id',
                   "password", "role", "gender", "age", "specialization"]
 
         extra_kwargs = {
@@ -164,7 +164,7 @@ class DoctorSerializer(serializers.ModelSerializer):
 class UpdateUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["email", "username", "name", 'address', 'status',
+        fields = ["email", "username", "name",
                   "phone", "role", "gender", "age"]
 
         def validate(self, value):
