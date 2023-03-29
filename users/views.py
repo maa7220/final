@@ -12,7 +12,7 @@ from .permissions import IsAdminRole, IsNurse, IsDoctor, IsSuperUser
 from .serializer import (SignUpAdminSerializer, SignUpUserSerializer, AddNurseSerializer, UpdateUserSerializer,
                          UserSerializer, SimpleUserSerializer, NurseSerializer, DoctorSerializer, UsersName,
                          AddPatient, PatientSerializer, PatientDoctorsSerializer, PatientNurseSerializer,
-                         ResetPasswordSerializer, VerifyOtpSerializer, PasswordSerializer)
+                         ResetPasswordSerializer, VerifyOtpSerializer, PasswordSerializer, UpdateProfileSerializer)
 from .models import (Admin, Doctor, Nurse, User, Patient)
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
@@ -56,6 +56,29 @@ class GetPendingAdminUser(generics.ListCreateAPIView):
 class DetailsAdminUser(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = SimpleUserSerializer
     queryset = User.objects.all()
+
+
+class UpdateProfileAdmin(generics.RetrieveUpdateAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def update(self, request):
+        user = request.user
+        data = request.data
+        phone_exists = User.objects.exclude(
+            pk=user.pk).filter(phone=data["phone"]).exists()
+        email_exists = User.objects.exclude(
+            pk=user.pk).filter(email=data["email"]).exists()
+
+        if phone_exists:
+            return Response({"message": "Phone has already been used"}, status=status.HTTP_400_BAD_REQUEST)
+        if email_exists:
+            return Response({"message": "Email has already been used"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.email = data.get('email')
+        user.name = data.get('name')
+        user.phone = data.get('phone')
+        user.save()
+        return Response({"message": "Update profile"}, status=status.HTTP_200_OK)
 
 
 # ---- Get Pending Details AdminUser -------
@@ -264,7 +287,7 @@ class AllDoctors(generics.ListCreateAPIView):
 
 # -------- Get Nurses (Admin)
 class AllNurses(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAdminRole, IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     search_fields = ['name', 'username', 'gender', 'specialization']
     serializer_class = UserSerializer
@@ -326,7 +349,7 @@ class UserDetails(generics.RetrieveUpdateDestroyAPIView):
 
 # ----- Add Patients -----------
 class SignupPatients(generics.GenericAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAdminRole, IsAuthenticated]
     serializer_class = AddPatient
 
     def post(self, request: Request):
@@ -351,14 +374,8 @@ class SignupPatients(generics.GenericAPIView):
 
 # ----- Patients for admin ---------
 class Patients(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    search_fields = ['name', 'disease_type', 'room_number']
+    permission_classes = [IsAdminRole, IsAuthenticated]
     serializer_class = PatientSerializer
-
-    def get_queryset(self):
-        admin = Admin.objects.get(user_id=self.request.user)
-        return admin.added_admin.all()
 
     def get(self, request):
         user = self.request.user
@@ -374,7 +391,7 @@ class Patients(generics.ListCreateAPIView):
 # ----- Patient Details ---------
 class PatientDetailsAPI(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AddPatient
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAdminRole, IsAuthenticated]
 
     def get(self, request, pk=None):
         try:
@@ -411,7 +428,7 @@ class PatientDetailsAPI(generics.RetrieveUpdateDestroyAPIView):
 
 # ----- Delete Doctor or Nurse from Patient
 class PatientDeleteUser(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAdminRole, IsAuthenticated]
     serializer_class = AddPatient
 
     def delete(self, request, pk=None):
@@ -437,7 +454,7 @@ class PatientDeleteUser(generics.RetrieveUpdateDestroyAPIView):
 
 # (Admin) Return Patient For one (nurse , or doctor)
 class GetUsersPatient(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAdminRole, IsAuthenticated]
 
     def get(self, request, pk=None):
         user = User.objects.get(pk=pk)
@@ -475,18 +492,18 @@ class PatientUser(APIView):
 
                 return Response(serializer.data, status=status.HTTP_200_OK)
 
-            else:
-                # --------------------------------
-                if user.role == 'doctor':
-                    doctor = Doctor.objects.get(user_id=user.id)
-                    patients = doctor.doctor.all()
-                    serializer = PatientDoctorsSerializer(patients, many=True,)
+            # --------------------------------
+            if user.role == 'doctor' or user.role == 'Doctor':
+                doctor = Doctor.objects.get(user_id=user.id)
+                patients = doctor.doctor.all()
+                serializer = PatientDoctorsSerializer(patients, many=True,)
+                return Response({"result": patients.count(), "data": serializer.data}, status=status.HTTP_200_OK)
 
-                # --------------------------------
-                elif user.role == 'nurse':
-                    nurse = Nurse.objects.get(user_id=user.id)
-                    patients = nurse.nurse.all()
-                    serializer = PatientNurseSerializer(patients, many=True)
+            # --------------------------------
+            elif user.role == 'nurse' or user.role == 'Nurse':
+                nurse = Nurse.objects.get(user_id=user.id)
+                patients = nurse.nurse.all()
+                serializer = PatientNurseSerializer(patients, many=True)
 
                 return Response({"result": patients.count(), "data": serializer.data}, status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
@@ -494,7 +511,7 @@ class PatientUser(APIView):
 
 
 class GetRelatedUser(generics.ListCreateAPIView):
-    permission_classes = [IsAuthenticated, IsAdminRole]
+    permission_classes = [IsAdminRole, IsAuthenticated]
 
     def get(self, request, pk=None):
         try:
@@ -596,26 +613,3 @@ class PasswordView(APIView):
             for field_name, field_errors in serializer.errors.items():
                 new_error[field_name] = field_errors[0]
             return Response(new_error, status=status.HTTP_400_BAD_REQUEST)
-          
-          
-class UpdateProfileAdmin(generics.RetrieveUpdateAPIView):
-    permission_classes = [IsAuthenticated]
-
-    def update(self, request):
-        user = request.user
-        data = request.data
-        phone_exists = User.objects.exclude(
-            pk=user.pk).filter(phone=data["phone"]).exists()
-        email_exists = User.objects.exclude(
-            pk=user.pk).filter(email=data["email"]).exists()
-
-        if phone_exists:
-            return Response({"message": "Phone has already been used"}, status=status.HTTP_400_BAD_REQUEST)
-        if email_exists:
-            return Response({"message": "Email has already been used"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.email = data.get('email')
-        user.name = data.get('name')
-        user.phone = data.get('phone')
-        user.save()
-        return Response({"message": "Update profile"}, status=status.HTTP_200_OK)          
