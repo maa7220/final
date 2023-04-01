@@ -261,7 +261,7 @@ class PatientDoctorsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Patient
-        fields = ['id', 'name', 'image', 'disease_type', 'room_number', 'address',
+        fields = ['id', 'name', 'image', 'disease_type', 'room_number', 'address','gender',
                   'phone',  'age', 'status', 'nurse']
 
     # ========= Get Nurse Information
@@ -283,7 +283,7 @@ class PatientNurseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Patient
-        fields = ['id', 'name', 'image', 'disease_type', 'room_number',
+        fields = ['id', 'name', 'image', 'disease_type', 'room_number','gender',
                   'phone',  'age', 'status', 'doctor']
 
     # ========= Get Doctor Information
